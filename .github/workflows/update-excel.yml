@@ -1,0 +1,23 @@
+name: Update Excel
+on:
+  schedule:
+    - cron: '0 8 * * *'  # Atualiza diariamente às 8h UTC
+  workflow_dispatch:     # Permite acionar manualmente
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Baixar Excel atualizado
+      run: |
+        curl -L -o data/escala.xlsx "https://docs.google.com/spreadsheets/d/15SY9irMP1B_zO59n8tLH469xWvItqcxK4V2DQo1LVlw/edit?usp=sharing"
+        
+    - name: Atualizar repositório
+      run: |
+        git config --global user.name 'GitHub Actions'
+        git config --global user.email 'actions@github.com'
+        git add data/escala.xlsx
+        git commit -m "Atualização automática do Excel - $(date)"
+        git push
