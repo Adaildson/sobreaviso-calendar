@@ -1436,7 +1436,24 @@ document.addEventListener('DOMContentLoaded', function() {
   // Gerar calendário inicial
   generateCalendar('sobreaviso');
 });
+  
+// Modifique sua função existente para ler do repositório
+async function loadExcel() {
+  try {
+    const response = await fetch('data/escala.xlsx');
+    const data = await response.arrayBuffer();
+    const workbook = XLSX.read(data);
+    // Continue com seu processamento normal...
+    generateCalendar();
+  } catch (error) {
+    console.error("Erro ao carregar Excel:", error);
+  }
+}
 
+// Carrega ao iniciar e a cada 4 horas
+loadExcel();
+setInterval(loadExcel, 14400000);
+  
 </script>
 
 </body>
