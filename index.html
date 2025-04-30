@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Escala de Sobreaviso e NOC</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.4/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --primary-color: #3498db;
+      --secondary-color: #2c3e50;
+      --accent-color: #f1c40f;
+      --danger-color: #e74c3c;
+      --success-color: #2ecc71;
+      --text-color: #333;
+      --light-gray: #ecf0f1;
+      --medium-gray: #bdc3c7;
+      --dark-gray: #7f8c8d;
+      --torre-color: #34495e;
+      --turno1-color: #16a085;
+      --turno2-color: #8e44ad;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: var(--text-color);
+      background-color: #f5f7fa;
+    }
+
+    .header {
+      background-color: var(--secondary-color);
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header h1 {
+      flex-grow: 1;
+      text-align: center;
+      font-size: 1.5rem;
+      margin: 0 1rem;
+    }
+
+    .logo {
+      width: 60px;
+      height: auto;
+      object-fit: contain;
+    }
+
+    .main-container {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .tabs {
+      display: flex;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--medium-gray);
+    }
+
+    .tab {
+      padding: 0.75rem 1.5rem;
+      cursor: pointer;
+      border: 1px solid transparent;
+      border-bottom: none;
+      border-radius: 0.5rem 0.5rem 0 0;
+      background-color: var(--light-gray);
+      margin-right: 0.25rem;
+      transition: all 0.2s ease;
+    }
+
+    .tab.active {
+      background-color: white;
+      border-color: var(--medium-gray);
+      border-bottom: 1px solid white;
+      margin-bottom: -1px;
+      font-weight: bold;
+      color: var(--primary-color);
+    }
+
+    .tab:hover:not(.active) {
+      background-color: #dfe6e9;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .calendar-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .month {
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .month-title {
+      background-color: var(--primary-color);
+      color: white;
+      padding: 0.75rem;
+      font-size: 1rem;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .day-names, .days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+    }
+
+    .day-names div {
+      text-align: center;
+      padding: 0.5rem;
+      font-weight: bold;
+      font-size: 0.75rem;
+      color: var(--dark-gray);
+    }
+
+    .days div {
+      text-align: center;
+      padding: 0.75rem;
+      margin: 0.15rem;
+      position: relative;
+      transition: all 0.2s ease;
+      font-size: 0.9rem;
+    }
+
+    .day {
+      background-color: var(--light-gray);
+      border-radius: 0.25rem;
+      cursor: pointer;
+    }
+
+    .day:hover {
+      background-color: #d6eaf8;
+      transform: translateY(-2px);
+    }
+
+    .day.empty {
+      background-color: transparent;
+      cursor: default;
+    }
+
+    .has-sobreaviso {
+      background-color: var(--accent-color);
+      font-weight: bold;
+    }
+
+    .has-sobreaviso:hover {
+      background-color: #f39c12;
+    }
+
+    .has-noc {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .has-noc.turno1 {
+      background-color: var(--turno1-color);
+      color: white;
+    }
+
+    .has-noc.turno2 {
+      background-color: var(--turno2-color);
+      color: white;
+    }
+
+    .today {
+      border: 2px solid var(--danger-color) !important;
+    }
+
+    .professional-item {
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #34495e;
+    }
+
+    .professional-item:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .professional-name {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .professional-torre {
+      font-size: 0.8125rem;
+      color: var(--torre-color);
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }
+
+    .professional-phone {
+      font-size: 0.8125rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .professional-phone a {
+      color: var(--primary-color);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+    }
+
+    .professional-phone a:hover {
+      text-decoration: underline;
+    }
+
+    .whatsapp-icon {
+      width: 16px;
+      height: 16px;
+      margin-right: 0.25rem;
+    }
+
+    .form-container {
+      background-color: white;
+      padding: 1.5rem;
+      margin: 2rem auto;
+      border-radius: 0.5rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      max-width: 600px;
+    }
+
+    .form-container h2 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      color: var(--secondary-color);
+      font-size: 1.25rem;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: var(--secondary-color);
+      font-size: 0.875rem;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 0.25rem;
+      font-size: 0.875rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 2px rgba(52,152,219,0.2);
+    }
+
+    .button {
+      display: inline-block;
+      padding: 0.75rem 1rem;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 0.25rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-align: center;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+
+    .button:hover {
+      background-color: #2980b9;
+      transform: translateY(-1px);
+    }
+
+    .button:active {
+      transform: translateY(0);
+    }
+
+    .button-group {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .button-group .button {
+      flex: 1;
+    }
+
+    .button-secondary {
+      background-color: var(--dark-gray);
+    }
+
+    .button-secondary:hover {
+      background-color: #7f8c8d;
+    }
+
+    .button-warning {
+      background-color: #e67e22;
+    }
+
+    .button-warning:hover {
+      background-color: #d35400;
+    }
+
+    .button-success {
+      background-color: var(--success-color);
+    }
+
+    .button-success:hover {
+      background-color: #27ae60;
+    }
+
+    .button-turno1 {
+      background-color: var(--turno1-color);
+    }
+
+    .button-turno1:hover {
+      background-color: #1abc9c;
+    }
+
+    .button-turno2 {
+      background-color: var(--turno2-color);
+    }
+
+    .button-turno2:hover {
+      background-color: #9b59b6;
+    }
+
+    .status-message {
+      padding: 0.75rem 1rem;
+      border-radius: 0.25rem;
+      margin: 1rem 0;
+      display: none;
+      font-size: 0.875rem;
+    }
+
+    .success {
+      background-color: #d5f5e3;
+      color: #27ae60;
+      display: block;
+    }
+
+    .error {
+      background-color: #fadbd8;
+      color: #e74c3c;
+      display: block;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-content {
+      background-color: white;
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      width: 90%;
+      max-width: 350px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      animation: slideDown 0.3s;
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid #eee;
+    }
+
+    .modal-title {
+      font-size: 1.125rem;
+      font-weight: bold;
+      color: var(--secondary-color);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--dark-gray);
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover {
+      color: var(--danger-color);
+    }
+
+    .turno-indicator {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      font-size: 0.6rem;
+      font-weight: bold;
+      background-color: rgba(0,0,0,0.2);
+      border-radius: 3px;
+      padding: 1px 3px;
+    }
+
+    @media (max-width: 768px) {
+      .calendar-container {
+        grid-template-columns: 1fr;
+      }
+
+      .header-content {
+        flex-direction: column;
+      }
+
+      .logo {
+        margin: 0.5rem 0;
+      }
+
+      .header h1 {
+        margin: 0.5rem 0;
+      }
+
+      .button-group {
+        flex-direction: column;
+      }
+
+      .tabs {
+        flex-wrap: wrap;
+      }
+
+      .tab {
+        padding: 0.5rem 1rem;
+        margin-bottom: 0.25rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .form-container {
+        padding: 1rem;
+      }
+
+      .modal-content {
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-content">
+      <img src="logoPF.jpg" alt="Logo" class="logo">
+      <h1>Escala de Sobreaviso e NOC</h1>
+      <img src="logoIT.jpeg" alt="Logo" class="logo">
+    </div>
+  </div>
+
+  <div class="main-container">
+    <div class="tabs">
+      <div class="tab active" onclick="openTab('sobreaviso')">Sobreaviso</div>
+      <div class="tab" onclick="openTab('noc')">Escala NOC</div>
+    </div>
+
+    <!-- Formulário de Sobreaviso -->
+    <div id="sobreaviso" class="tab-content active">
+      <div class="form-container">
+        <div id="statusMessage" class="status-message"></div>
+
+        <h2 id="formTitle">Cadastro de Sobreaviso</h2>
+        <form id="sobreavisoForm">
+          <div class="form-group">
+            <label for="date">Data:</label>
+            <input type="date" id="date" required>
+          </div>
+
+          <div class="form-group">
+            <label for="nome">Nome do Profissional:</label>
+            <input type="text" id="nome" required placeholder="Nome completo">
+          </div>
+
+          <div class="form-group">
+            <label for="torre">Torre/Equipe:</label>
+            <input type="text" id="torre" required placeholder="Ex: Torre 1">
+          </div>
+
+          <div class="form-group">
+            <label for="telefone">Telefone:</label>
+            <input type="tel" id="telefone" required placeholder="(99) 99999-9999">
+          </div>
+
+          <div class="button-group">
+            <button type="submit" class="button button-success">Salvar</button>
+            <button type="button" class="button button-secondary" onclick="document.getElementById('importFile').click()">Importar</button>
+            <input type="file" id="importFile" accept=".xlsx,.xls" class="hidden" onchange="importFromExcel(event)">
+            <button type="button" class="button button-secondary" onclick="exportToExcel('sobreaviso')">Exportar</button>
+          </div>
+
+          <button type="button" id="editButton" class="button button-warning hidden">Confirmar Edição</button>
+        </form>
+      </div>
+
+      <div class="calendar-container" id="calendarSobreaviso"></div>
+    </div>
+
+    <!-- Formulário de NOC -->
+    <div id="noc" class="tab-content">
+      <div class="form-container">
+        <div id="nocStatusMessage" class="status-message"></div>
+
+        <h2 id="nocFormTitle">Cadastro de Escala NOC</h2>
+        <form id="nocForm">
+          <div class="form-group">
+            <label for="nocDate">Data:</label>
+            <input type="date" id="nocDate" required>
+          </div>
+
+          <div class="form-group">
+            <label for="turno">Turno:</label>
+            <select id="turno" required>
+              <option value="">Selecione o turno</option>
+              <option value="1">Turno 1 (07h-19h)</option>
+              <option value="2">Turno 2 (19h-07h)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="nocNome">Nome do Profissional:</label>
+            <input type="text" id="nocNome" required placeholder="Nome completo">
+          </div>
+
+          <div class="form-group">
+            <label for="nocTorre">Torre/Equipe:</label>
+            <input type="text" id="nocTorre" required placeholder="Ex: Torre 1">
+          </div>
+
+          <div class="form-group">
+            <label for="nocTelefone">Telefone:</label>
+            <input type="tel" id="nocTelefone" required placeholder="(99) 99999-9999">
+          </div>
+
+          <div class="button-group">
+            <button type="submit" class="button button-turno1">Salvar Turno 1</button>
+            <button type="button" class="button button-turno2" onclick="saveNocTurno2()">Salvar Turno 2</button>
+            <button type="button" class="button button-secondary" onclick="document.getElementById('nocImportFile').click()">Importar</button>
+            <input type="file" id="nocImportFile" accept=".xlsx,.xls" class="hidden" onchange="importNocFromExcel(event)">
+            <button type="button" class="button button-secondary" onclick="exportToExcel('noc')">Exportar</button>
+          </div>
+
+          <button type="button" id="nocEditButton" class="button button-warning hidden">Confirmar Edição</button>
+        </form>
+      </div>
+
+      <div class="calendar-container" id="calendarNoc"></div>
+    </div>
+  </div>
+
+  <!-- Modal para detalhes de sobreaviso -->
+  <div id="infoModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalTitle">Detalhes do Sobreaviso</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <!-- Modal para detalhes de NOC -->
+  <div id="nocInfoModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="nocModalTitle">Detalhes do NOC</h3>
+        <button class="modal-close" onclick="closeNocModal()">&times;</button>
+      </div>
+      <div id="nocModalContent"></div>
+    </div>
+  </div>
+
+  <!-- Modal para sem registro -->
+  <div id="noRecordModal" class="modal">
+    <div class="modal-content" style="max-width: 300px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="noRecordTitle">Sem Registro</h3>
+        <button class="modal-close" onclick="closeNoRecordModal()">&times;</button>
+      </div>
+      <div style="padding: 1rem; text-align: center;">
+        Não há registro cadastrado para este dia.
+      </div>
+    </div>
+  </div>
+
+<script>
+let sobreavisoList = [];
+let nocList = [];
+let editingDate = null;
+let editingNocDate = null;
+let editingNocTurno = null;
+
+// Mostrar mensagem de status
+function showStatus(message, isSuccess, type = 'sobreaviso') {
+  const statusElement = type === 'noc' ? document.getElementById('nocStatusMessage') : document.getElementById('statusMessage');
+  statusElement.textContent = message;
+  statusElement.className = isSuccess ? 'status-message success' : 'status-message error';
+
+  setTimeout(() => {
+    statusElement.className = 'status-message';
+    statusElement.textContent = '';
+  }, 5000);
+}
+
+// Formatar telefone para (99) 99999-9999
+function formatPhoneInput(elementId) {
+  const phoneInput = document.getElementById(elementId);
+  let value = phoneInput.value.replace(/\D/g, '');
+  let formattedValue = '';
+
+  if (value.length > 0) {
+    formattedValue = '(' + value.substring(0, 2);
+    if (value.length > 2) {
+      formattedValue += ') ' + value.substring(2, 7);
+      if (value.length > 7) {
+        formattedValue += '-' + value.substring(7, 11);
+      }
+    }
+  }
+
+  phoneInput.value = formattedValue;
+}
+
+// Validar telefone
+function validatePhone(phone) {
+  const cleaned = phone.replace(/\D/g, '');
+  return cleaned.length >= 10 && cleaned.length <= 11;
+}
+
+// Formatar data para exibição (dd/mm/aaaa)
+function formatDateDisplay(dateString) {
+  const [year, month, day] = dateString.split('-');
+  return `${day}/${month}/${year}`;
+}
+
+// Configurar máscara de telefone
+document.getElementById('telefone').addEventListener('input', () => formatPhoneInput('telefone'));
+document.getElementById('nocTelefone').addEventListener('input', () => formatPhoneInput('nocTelefone'));
+
+// Submit do formulário de sobreaviso
+document.getElementById('sobreavisoForm').addEventListener('submit', function(event) {
+  event.preventDefault();
+
+  const date = document.getElementById('date').value;
+  const nome = document.getElementById('nome').value.trim();
+  const torre = document.getElementById('torre').value.trim();
+  const telefone = document.getElementById('telefone').value;
+
+  if (!validatePhone(telefone)) {
+    showStatus('Telefone inválido! Use (DDD) + número (8 ou 9 dígitos)', false);
+    return;
+  }
+
+  const phoneDigits = telefone.replace(/\D/g, '');
+
+  if (editingDate) {
+    const existingIndex = sobreavisoList.findIndex(item => item.data === editingDate);
+    if (existingIndex !== -1) {
+      // Remove o sobreaviso existente para substituir
+      sobreavisoList.splice(existingIndex, 1);
+    }
+
+    sobreavisoList.push({
+      data: date,
+      profissionais: [{ nome, torre, telefone: phoneDigits }]
+    });
+
+    showStatus('Sobreaviso atualizado com sucesso!', true);
+    editingDate = null;
+  } else {
+    const existingIndex = sobreavisoList.findIndex(item => item.data === date);
+    if (existingIndex !== -1) {
+      // Adiciona novo profissional à data existente
+      sobreavisoList[existingIndex].profissionais.push({ nome, torre, telefone: phoneDigits });
+      showStatus('Profissional adicionado à data existente!', true);
+    } else {
+      // Cria novo sobreaviso
+      sobreavisoList.push({
+        data: date,
+        profissionais: [{ nome, torre, telefone: phoneDigits }]
+      });
+      showStatus('Novo sobreaviso cadastrado com sucesso!', true);
+    }
+  }
+
+  document.getElementById('sobreavisoForm').reset();
+  document.getElementById('editButton').classList.add('hidden');
+  document.getElementById('formTitle').textContent = "Cadastro de Sobreaviso";
+  generateCalendar('sobreaviso');
+});
+
+// Submit do formulário de NOC (Turno 1)
+document.getElementById('nocForm').addEventListener('submit', function(event) {
+  event.preventDefault();
+  saveNoc(1);
+});
+
+// Salvar NOC Turno 2
+function saveNocTurno2() {
+  saveNoc(2);
+}
+
+// Função para salvar escala NOC
+function saveNoc(turno) {
+  const date = document.getElementById('nocDate').value;
+  const nome = document.getElementById('nocNome').value.trim();
+  const torre = document.getElementById('nocTorre').value.trim();
+  const telefone = document.getElementById('nocTelefone').value;
+
+  if (!validatePhone(telefone)) {
+    showStatus('Telefone inválido! Use (DDD) + número (8 ou 9 dígitos)', false, 'noc');
+    return;
+  }
+
+  const phoneDigits = telefone.replace(/\D/g, '');
+
+  if (editingNocDate && editingNocTurno) {
+    // Remove o registro existente para substituir
+    nocList = nocList.filter(item => !(item.data === editingNocDate && item.turno === editingNocTurno));
+
+    nocList.push({
+      data: date,
+      turno: turno,
+      nome,
+      torre,
+      telefone: phoneDigits
+    });
+
+    showStatus(`Escala NOC Turno ${turno} atualizada com sucesso!`, true, 'noc');
+    editingNocDate = null;
+    editingNocTurno = null;
+  } else {
+    // Verifica se já existe um registro para esta data e turno
+    const existingIndex = nocList.findIndex(item => item.data === date && item.turno === turno);
+
+    if (existingIndex !== -1) {
+      showStatus(`Já existe um registro para esta data no Turno ${turno}. Edite o existente.`, false, 'noc');
+      return;
+    }
+
+    nocList.push({
+      data: date,
+      turno: turno,
+      nome,
+      torre,
+      telefone: phoneDigits
+    });
+
+    showStatus(`Escala NOC Turno ${turno} cadastrada com sucesso!`, true, 'noc');
+  }
+
+  document.getElementById('nocForm').reset();
+  document.getElementById('nocEditButton').classList.add('hidden');
+  document.getElementById('nocFormTitle').textContent = "Cadastro de Escala NOC";
+  generateCalendar('noc');
+}
+
+// Gerar calendário
+function generateCalendar(type = 'sobreaviso') {
+  const calendar = document.getElementById(type === 'noc' ? 'calendarNoc' : 'calendarSobreaviso');
+  calendar.innerHTML = '';
+
+  const today = new Date();
+  const year = today.getFullYear();
+  const months = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+  ];
+
+  for (let i = 0; i < 12; i++) {
+    const monthDiv = document.createElement('div');
+    monthDiv.className = 'month';
+
+    const title = document.createElement('div');
+    title.className = 'month-title';
+    title.textContent = `${months[i]} ${year}`;
+    monthDiv.appendChild(title);
+
+    const daysHeader = document.createElement('div');
+    daysHeader.className = 'day-names';
+    ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].forEach(d => {
+      const day = document.createElement('div');
+      day.textContent = d;
+      daysHeader.appendChild(day);
+    });
+    monthDiv.appendChild(daysHeader);
+
+    const days = document.createElement('div');
+    days.className = 'days';
+
+    const firstDay = new Date(year, i, 1).getDay();
+    const totalDays = new Date(year, i + 1, 0).getDate();
+
+    // Dias vazios no início do mês
+    for (let k = 0; k < firstDay; k++) {
+      const empty = document.createElement('div');
+      empty.className = 'day empty';
+      days.appendChild(empty);
+    }
+
+    // Dias do mês
+    for (let d = 1; d <= totalDays; d++) {
+      const day = document.createElement('div');
+      day.className = 'day';
+      day.textContent = d;
+
+      const fullDate = `${year}-${String(i + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+      if (type === 'sobreaviso') {
+        const match = sobreavisoList.find(item => item.data === fullDate);
+
+        if (match) {
+          day.classList.add('has-sobreaviso');
+
+          // Click abre o modal diretamente
+          day.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openModal(fullDate);
+          });
+        } else {
+          // Click mostra mensagem de sem sobreaviso
+          day.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openNoRecordModal(fullDate, 'sobreaviso');
+          });
+        }
+      } else { // NOC
+        const turno1 = nocList.find(item => item.data === fullDate && item.turno === 1);
+        const turno2 = nocList.find(item => item.data === fullDate && item.turno === 2);
+
+        if (turno1 || turno2) {
+          day.classList.add('has-noc');
+
+          if (turno1 && turno2) {
+            day.classList.add('turno1');
+            const turnoIndicator = document.createElement('span');
+            turnoIndicator.className = 'turno-indicator';
+            turnoIndicator.textContent = '1+2';
+            day.appendChild(turnoIndicator);
+          } else if (turno1) {
+            day.classList.add('turno1');
+            const turnoIndicator = document.createElement('span');
+            turnoIndicator.className = 'turno-indicator';
+            turnoIndicator.textContent = '1';
+            day.appendChild(turnoIndicator);
+          } else if (turno2) {
+            day.classList.add('turno2');
+            const turnoIndicator = document.createElement('span');
+            turnoIndicator.className = 'turno-indicator';
+            turnoIndicator.textContent = '2';
+            day.appendChild(turnoIndicator);
+          }
+
+          // Click abre o modal diretamente
+          day.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openNocModal(fullDate);
+          });
+        } else {
+          // Click mostra mensagem de sem registro
+          day.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openNoRecordModal(fullDate, 'noc');
+          });
+        }
+      }
+
+      // Destacar dia atual
+      if (d === today.getDate() && i === today.getMonth() && year === today.getFullYear()) {
+        day.classList.add('today');
+      }
+
+      days.appendChild(day);
+    }
+
+    monthDiv.appendChild(days);
+    calendar.appendChild(monthDiv);
+  }
+}
+
+// Abrir modal com detalhes de sobreaviso
+function openModal(date) {
+  const modal = document.getElementById('infoModal');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalContent = document.getElementById('modalContent');
+
+  const sobreaviso = sobreavisoList.find(item => item.data === date);
+
+  if (sobreaviso) {
+    const [year, month, day] = date.split('-');
+    const formattedDate = `${day}/${month}/${year}`;
+
+    modalTitle.textContent = `Sobreaviso - ${formattedDate}`;
+
+    let contentHTML = '';
+    sobreaviso.profissionais.forEach((prof, index) => {
+      const formattedPhone = prof.telefone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3');
+
+      contentHTML += `
+        <div class="professional-item">
+          <div class="professional-name"><strong>${index + 1}. ${prof.nome}</strong></div>
+          <div class="professional-torre">${prof.torre}</div>
+          <div class="professional-phone">
+            <a href="https://wa.me/55${prof.telefone}" target="_blank" title="WhatsApp" style="margin-right:8px;">
+              ${formattedPhone}
+              <svg class="whatsapp-icon" viewBox="0 0 24 24" fill="#25D366" style="margin-left:4px;">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+              </svg>
+            </a>
+            <a href="tel:${prof.telefone}" title="Ligar" style="color: var(--primary-color);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#3498db">
+                <path d="M20.016 15.516q0.328 0 0.586 0.234t0.258 0.563v3.703q0 0.328-0.234 0.586t-0.563 0.258q-7.031 0-12.445-5.414t-5.414-12.445q0-0.328 0.234-0.586t0.563-0.234h3.703q0.328 0 0.586 0.234t0.258 0.563q0.047 0.891 0.188 1.641 0.094 0.422-0.117 0.68l-2.344 2.344q1.313 2.484 3.797 3.797l2.344-2.344q0.258-0.258 0.68-0.141 0.75 0.188 1.641 0.188z"/>
+              </svg>
+            </a>
+          </div>
+          <button onclick="editSobreaviso('${date}')" class="button button-warning" style="margin-top: 0.5rem; width: 100%;">Editar</button>
+        </div>
+      `;
+    });
+
+    modalContent.innerHTML = contentHTML;
+    modal.style.display = 'flex';
+  }
+}
+
+// Abrir modal com detalhes de NOC
+function openNocModal(date) {
+  const modal = document.getElementById('nocInfoModal');
+  const modalTitle = document.getElementById('nocModalTitle');
+  const modalContent = document.getElementById('nocModalContent');
+
+  const turno1 = nocList.find(item => item.data === date && item.turno === 1);
+  const turno2 = nocList.find(item => item.data === date && item.turno === 2);
+
+  if (turno1 || turno2) {
+    const [year, month, day] = date.split('-');
+    const formattedDate = `${day}/${month}/${year}`;
+
+    modalTitle.textContent = `Escala NOC - ${formattedDate}`;
+
+    let contentHTML = '';
+
+    if (turno1) {
+      const formattedPhone = turno1.telefone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3');
+      contentHTML += `
+        <div class="professional-item" style="border-left: 4px solid var(--turno1-color); padding-left: 0.5rem;">
+          <div class="professional-name"><strong>Turno 1 (07h-19h)</strong></div>
+          <div class="professional-name">${turno1.nome}</div>
+          <div class="professional-torre">${turno1.torre}</div>
+          <div class="professional-phone">
+            <a href="https://wa.me/55${turno1.telefone}" target="_blank" title="WhatsApp" style="margin-right:8px;">
+              ${formattedPhone}
+              <svg class="whatsapp-icon" viewBox="0 0 24 24" fill="#25D366" style="margin-left:4px;">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+              </svg>
+            </a>
+            <a href="tel:${turno1.telefone}" title="Ligar" style="color: var(--primary-color);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#3498db">
+                <path d="M20.016 15.516q0.328 0 0.586 0.234t0.258 0.563v3.703q0 0.328-0.234 0.586t-0.563 0.258q-7.031 0-12.445-5.414t-5.414-12.445q0-0.328 0.234-0.586t0.563-0.234h3.703q0.328 0 0.586 0.234t0.258 0.563q0.047 0.891 0.188 1.641 0.094 0.422-0.117 0.68l-2.344 2.344q1.313 2.484 3.797 3.797l2.344-2.344q0.258-0.258 0.68-0.141 0.75 0.188 1.641 0.188z"/>
+              </svg>
+            </a>
+          </div>
+          <button onclick="editNoc('${date}', 1)" class="button button-warning" style="margin-top: 0.5rem; width: 100%;">Editar</button>
+        </div>
+      `;
+    }
+
+    if (turno2) {
+      const formattedPhone = turno2.telefone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3');
+      contentHTML += `
+        <div class="professional-item" style="border-left: 4px solid var(--turno2-color); padding-left: 0.5rem; margin-top: 1rem;">
+          <div class="professional-name"><strong>Turno 2 (19h-07h)</strong></div>
+          <div class="professional-name">${turno2.nome}</div>
+          <div class="professional-torre">${turno2.torre}</div>
+          <div class="professional-phone">
+            <a href="https://wa.me/55${turno2.telefone}" target="_blank" title="WhatsApp" style="margin-right:8px;">
+              ${formattedPhone}
+              <svg class="whatsapp-icon" viewBox="0 0 24 24" fill="#25D366" style="margin-left:4px;">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+              </svg>
+            </a>
+            <a href="tel:${turno2.telefone}" title="Ligar" style="color: var(--primary-color);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#3498db">
+                <path d="M20.016 15.516q0.328 0 0.586 0.234t0.258 0.563v3.703q0 0.328-0.234 0.586t-0.563 0.258q-7.031 0-12.445-5.414t-5.414-12.445q0-0.328 0.234-0.586t0.563-0.234h3.703q0.328 0 0.586 0.234t0.258 0.563q0.047 0.891 0.188 1.641 0.094 0.422-0.117 0.68l-2.344 2.344q1.313 2.484 3.797 3.797l2.344-2.344q0.258-0.258 0.68-0.141 0.75 0.188 1.641 0.188z"/>
+              </svg>
+            </a>
+          </div>
+          <button onclick="editNoc('${date}', 2)" class="button button-warning" style="margin-top: 0.5rem; width: 100%;">Editar</button>
+        </div>
+      `;
+    }
+
+    modalContent.innerHTML = contentHTML;
+    modal.style.display = 'flex';
+  }
+}
+
+// Abrir modal sem registro
+function openNoRecordModal(date, type) {
+  const modal = document.getElementById('noRecordModal');
+  const [year, month, day] = date.split('-');
+  const formattedDate = `${day}/${month}/${year}`;
+
+  document.querySelector('#noRecordModal .modal-title').textContent =
+    type === 'noc' ? `Sem NOC - ${formattedDate}` : `Sem Sobreaviso - ${formattedDate}`;
+
+  modal.style.display = 'flex';
+}
+
+// Fechar modais
+function closeModal() {
+  document.getElementById('infoModal').style.display = 'none';
+}
+
+function closeNocModal() {
+  document.getElementById('nocInfoModal').style.display = 'none';
+}
+
+function closeNoRecordModal() {
+  document.getElementById('noRecordModal').style.display = 'none';
+}
+
+// Editar sobreaviso
+function editSobreaviso(date) {
+  const existing = sobreavisoList.find(item => item.data === date);
+  if (existing && existing.profissionais.length > 0) {
+    const primeiroProfissional = existing.profissionais[0];
+    document.getElementById('date').value = date;
+    document.getElementById('nome').value = primeiroProfissional.nome;
+    document.getElementById('torre').value = primeiroProfissional.torre;
+
+    // Formatar telefone para exibição
+    const telefone = primeiroProfissional.telefone;
+    const formattedPhone = telefone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3');
+    document.getElementById('telefone').value = formattedPhone;
+
+    document.getElementById('editButton').classList.remove('hidden');
+    document.getElementById('formTitle').textContent = "Editar Sobreaviso";
+    editingDate = date;
+
+    // Rolagem suave para o formulário
+    document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth' });
+    openTab('sobreaviso');
+  }
+}
+
+// Editar NOC
+function editNoc(date, turno) {
+  const existing = nocList.find(item => item.data === date && item.turno === turno);
+  if (existing) {
+    document.getElementById('nocDate').value = date;
+    document.getElementById('turno').value = turno;
+    document.getElementById('nocNome').value = existing.nome;
+    document.getElementById('nocTorre').value = existing.torre;
+
+    // Formatar telefone para exibição
+    const telefone = existing.telefone;
+    const formattedPhone = telefone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3');
+    document.getElementById('nocTelefone').value = formattedPhone;
+
+    document.getElementById('nocEditButton').classList.remove('hidden');
+    document.getElementById('nocFormTitle').textContent = `Editar NOC Turno ${turno}`;
+    editingNocDate = date;
+    editingNocTurno = turno;
+
+    // Rolagem suave para o formulário
+    document.querySelectorAll('.form-container')[1].scrollIntoView({ behavior: 'smooth' });
+    openTab('noc');
+  }
+}
+
+// Exportar para Excel
+function exportToExcel(type = 'sobreaviso') {
+  let exportData = [];
+  let fileName = '';
+
+  if (type === 'sobreaviso') {
+    if (sobreavisoList.length === 0) {
+      showStatus('Nenhum dado para exportar!', false);
+      return;
+    }
+
+    sobreavisoList.forEach(item => {
+      item.profissionais.forEach(prof => {
+        exportData.push({
+          "Data": formatDateDisplay(item.data),
+          "Nome": prof.nome,
+          "Torre": prof.torre,
+          "Telefone": prof.telefone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3')
+        });
+      });
+    });
+    fileName = `sobreaviso_${new Date().toISOString().slice(0,10)}.xlsx`;
+  } else { // NOC
+    if (nocList.length === 0) {
+      showStatus('Nenhum dado para exportar!', false, 'noc');
+      return;
+    }
+
+    nocList.forEach(item => {
+      exportData.push({
+        "Data": formatDateDisplay(item.data),
+        "Turno": item.turno === 1 ? "Turno 1 (07h-19h)" : "Turno 2 (19h-07h)",
+        "Nome": item.nome,
+        "Torre": item.torre,
+        "Telefone": item.telefone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3')
+      });
+    });
+    fileName = `escala_noc_${new Date().toISOString().slice(0,10)}.xlsx`;
+  }
+
+  try {
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, type === 'sobreaviso' ? 'Sobreaviso' : 'NOC');
+    XLSX.writeFile(wb, fileName);
+
+    showStatus('Dados exportados com sucesso!', true, type);
+  } catch (error) {
+    console.error("Erro ao exportar:", error);
+    showStatus('Erro ao exportar dados!', false, type);
+  }
+}
+
+// Importar de Excel (Sobreaviso)
+function importFromExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws);
+
+      if (data.length === 0) {
+        showStatus('O arquivo está vazio ou não contém dados válidos!', false);
+        return;
+      }
+
+      const newSobreavisoList = [];
+      const groupedData = {};
+
+      data.forEach(row => {
+        // Tentar diferentes formatos de nome de coluna
+        const dateValue = row.Data || row.data || row.DATA || row.Date || row.date || row.DATE;
+        const nome = row.Nome || row.nome || row.NOME || row.Name || row.name || row.NAME;
+        const torre = row.Torre || row.torre || row.TORRE || row.Tower || row.tower || row.TOWER;
+        let telefone = row.Telefone || row.telefone || row.TELEFONE || row.Phone || row.phone || row.PHONE;
+
+        if (dateValue && nome && torre && telefone) {
+          // Converter telefone para apenas números
+          telefone = telefone.toString().replace(/\D/g, '');
+
+          // Formatar a data para o padrão YYYY-MM-DD
+          let formattedDate;
+
+          if (typeof dateValue === 'string') {
+            // Tentar parsear datas no formato DD/MM/YYYY ou YYYY-MM-DD
+            const dateParts = dateValue.split(/[/-]/);
+            if (dateParts.length === 3) {
+              if (dateParts[0].length === 4) { // YYYY-MM-DD
+                formattedDate = dateValue;
+              } else { // DD/MM/YYYY
+                formattedDate = `${dateParts[2]}-${dateParts[1].padStart(2, '0')}-${dateParts[0].padStart(2, '0')}`;
+              }
+            }
+          } else if (dateValue instanceof Date) {
+            // Se for objeto Date, converter para YYYY-MM-DD
+            formattedDate = dateValue.toISOString().split('T')[0];
+          }
+
+          if (formattedDate && telefone.length >= 10) {
+            if (!groupedData[formattedDate]) {
+              groupedData[formattedDate] = [];
+            }
+            groupedData[formattedDate].push({
+              nome: nome.toString().trim(),
+              torre: torre.toString().trim(),
+              telefone
+            });
+          }
+        }
+      });
+
+      // Converter para o formato da lista
+      for (const date in groupedData) {
+        newSobreavisoList.push({
+          data: date,
+          profissionais: groupedData[date]
+        });
+      }
+
+      if (newSobreavisoList.length === 0) {
+        showStatus('Nenhum dado válido encontrado no arquivo!', false);
+        return;
+      }
+
+      // Atualizar a lista principal
+      sobreavisoList = newSobreavisoList;
+
+      // Limpar o input file
+      event.target.value = '';
+
+      // Atualizar a interface
+      generateCalendar('sobreaviso');
+      showStatus(`Dados importados com sucesso! ${newSobreavisoList.length} datas carregadas.`, true);
+
+    } catch (error) {
+      console.error("Erro ao importar:", error);
+      showStatus('Erro ao importar arquivo. Verifique o formato e tente novamente.', false);
+    }
+  };
+
+  reader.onerror = function() {
+    showStatus('Erro ao ler o arquivo. Tente novamente.', false);
+  };
+
+  reader.readAsBinaryString(file);
+}
+
+// Importar de Excel (NOC)
+function importNocFromExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws);
+
+      if (data.length === 0) {
+        showStatus('O arquivo está vazio ou não contém dados válidos!', false, 'noc');
+        return;
+      }
+
+      const newNocList = [];
+
+      data.forEach(row => {
+        // Tentar diferentes formatos de nome de coluna
+        const dateValue = row.Data || row.data || row.DATA || row.Date || row.date || row.DATE;
+        const turnoValue = row.Turno || row.turno || row.TURNO || row.Shift || row.shift || row.SHIFT;
+        const nome = row.Nome || row.nome || row.NOME || row.Name || row.name || row.NAME;
+        const torre = row.Torre || row.torre || row.TORRE || row.Tower || row.tower || row.TOWER;
+        let telefone = row.Telefone || row.telefone || row.TELEFONE || row.Phone || row.phone || row.PHONE;
+
+        if (dateValue && turnoValue && nome && torre && telefone) {
+          // Converter telefone para apenas números
+          telefone = telefone.toString().replace(/\D/g, '');
+
+          // Determinar o turno (1 ou 2)
+          let turno;
+          if (typeof turnoValue === 'number') {
+            turno = turnoValue === 1 ? 1 : 2;
+          } else {
+            const turnoStr = turnoValue.toString().toLowerCase();
+            turno = turnoStr.includes('1') || turnoStr.includes('07') || turnoStr.includes('7') ? 1 : 2;
+          }
+
+          // Formatar a data para o padrão YYYY-MM-DD
+          let formattedDate;
+
+          if (typeof dateValue === 'string') {
+            // Tentar parsear datas no formato DD/MM/YYYY ou YYYY-MM-DD
+            const dateParts = dateValue.split(/[/-]/);
+            if (dateParts.length === 3) {
+              if (dateParts[0].length === 4) { // YYYY-MM-DD
+                formattedDate = dateValue;
+              } else { // DD/MM/YYYY
+                formattedDate = `${dateParts[2]}-${dateParts[1].padStart(2, '0')}-${dateParts[0].padStart(2, '0')}`;
+              }
+            }
+          } else if (dateValue instanceof Date) {
+            // Se for objeto Date, converter para YYYY-MM-DD
+            formattedDate = dateValue.toISOString().split('T')[0];
+          }
+
+          if (formattedDate && telefone.length >= 10) {
+            newNocList.push({
+              data: formattedDate,
+              turno: turno,
+              nome: nome.toString().trim(),
+              torre: torre.toString().trim(),
+              telefone: telefone
+            });
+          }
+        }
+      });
+
+      if (newNocList.length === 0) {
+        showStatus('Nenhum dado válido encontrado no arquivo!', false, 'noc');
+        return;
+      }
+
+      // Atualizar a lista principal
+      nocList = newNocList;
+
+      // Limpar o input file
+      event.target.value = '';
+
+      // Atualizar a interface
+      generateCalendar('noc');
+      showStatus(`Dados importados com sucesso! ${newNocList.length} registros carregados.`, true, 'noc');
+
+    } catch (error) {
+      console.error("Erro ao importar:", error);
+      showStatus('Erro ao importar arquivo. Verifique o formato e tente novamente.', false, 'noc');
+    }
+  };
+
+  reader.onerror = function() {
+    showStatus('Erro ao ler o arquivo. Tente novamente.', false, 'noc');
+  };
+
+  reader.readAsBinaryString(file);
+}
+
+// Alternar entre abas
+function openTab(tabName) {
+  // Esconder todos os conteúdos das abas
+  const tabContents = document.getElementsByClassName('tab-content');
+  for (let i = 0; i < tabContents.length; i++) {
+    tabContents[i].classList.remove('active');
+  }
+
+  // Remover a classe 'active' de todas as abas
+  const tabs = document.getElementsByClassName('tab');
+  for (let i = 0; i < tabs.length; i++) {
+    tabs[i].classList.remove('active');
+  }
+
+  // Mostrar o conteúdo da aba selecionada e marcar a aba como ativa
+  document.getElementById(tabName).classList.add('active');
+  event.currentTarget.classList.add('active');
+
+  // Gerar o calendário correspondente se necessário
+  if (tabName === 'sobreaviso' && document.getElementById('calendarSobreaviso').innerHTML === '') {
+    generateCalendar('sobreaviso');
+  } else if (tabName === 'noc' && document.getElementById('calendarNoc').innerHTML === '') {
+    generateCalendar('noc');
+  }
+}
+
+// Fechar modais ao clicar fora
+window.addEventListener('click', (event) => {
+  const modal = document.getElementById('infoModal');
+  const nocModal = document.getElementById('nocInfoModal');
+  const noRecordModal = document.getElementById('noRecordModal');
+
+  if (event.target === modal) {
+    closeModal();
+  }
+  if (event.target === nocModal) {
+    closeNocModal();
+  }
+  if (event.target === noRecordModal) {
+    closeNoRecordModal();
+  }
+});
+
+// Inicializar o calendário
+document.addEventListener('DOMContentLoaded', function() {
+  // Configurar data atual como padrão no formulário
+  const today = new Date();
+  const formattedDate = today.toISOString().split('T')[0];
+  document.getElementById('date').value = formattedDate;
+  document.getElementById('nocDate').value = formattedDate;
+
+  // Gerar calendário inicial
+  generateCalendar('sobreaviso');
+});
+
+</script>
+
+</body>
+</html>
